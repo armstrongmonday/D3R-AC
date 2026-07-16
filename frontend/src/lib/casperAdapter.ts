@@ -16,6 +16,7 @@ class CasperAdapter implements ChainAdapter {
   id = "casper" as const;
   label = "Casper";
   nativeSymbol = "CSPR";
+  installUrl = "https://www.casperwallet.io/";
   private address: string | null = null;
 
   isWalletAvailable(): boolean {

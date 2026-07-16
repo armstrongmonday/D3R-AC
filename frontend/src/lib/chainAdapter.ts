@@ -19,6 +19,7 @@ export interface ChainAdapter {
   id: ChainId;
   label: string;
   nativeSymbol: string;
+  installUrl: string; // where to install the wallet extension, for adaptive "not detected" guidance
   isWalletAvailable(): boolean;
   connect(): Promise<string>; // returns connected address
   getAddress(): string | null;

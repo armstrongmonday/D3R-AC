@@ -66,6 +66,7 @@ class TronAdapter implements ChainAdapter {
   id = "tron" as const;
   label = "TRON";
   nativeSymbol = "TRX";
+  installUrl = "https://www.tronlink.org/";
   private address: string | null = null;
 
   isWalletAvailable(): boolean {

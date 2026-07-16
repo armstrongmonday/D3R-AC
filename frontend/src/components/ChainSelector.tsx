@@ -6,7 +6,8 @@ function truncate(addr: string): string {
 }
 
 export default function ChainSelector() {
-  const { chainId, setChain, availableChains, address, connecting, connect, error } = useWallet();
+  const { chainId, adapter, setChain, availableChains, address, connecting, connect, error } = useWallet();
+  const currentAvailable = availableChains.find((c) => c.id === chainId)?.available ?? false;
 
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -36,10 +37,20 @@ export default function ChainSelector() {
           <span className="dot" style={{ background: "var(--teal)" }} />
           {truncate(address)}
         </span>
-      ) : (
+      ) : currentAvailable ? (
         <button className="btn btn-primary" onClick={connect} disabled={connecting}>
           {connecting ? "Connecting…" : "Connect wallet"}
         </button>
+      ) : (
+        <a
+          href={adapter.installUrl}
+          target="_blank"
+          rel="noreferrer"
+          className="btn btn-ghost"
+          title={`${adapter.label} wallet not detected — install it to connect`}
+        >
+          Install {adapter.label} wallet
+        </a>
       )}
       {error && (
         <span style={{ fontSize: 12, color: "var(--coral)", maxWidth: 220 }}>{error}</span>

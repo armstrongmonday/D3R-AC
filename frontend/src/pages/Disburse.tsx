@@ -53,9 +53,15 @@ export default function Disburse() {
           <p style={{ marginBottom: 16, color: "var(--text-muted)" }}>
             Connect a {adapter.label} wallet to read balances and send funds.
           </p>
-          <button className="btn btn-primary" onClick={connect} disabled={connecting}>
-            {connecting ? "Connecting…" : `Connect ${adapter.label} wallet`}
-          </button>
+          {adapter.isWalletAvailable() ? (
+            <button className="btn btn-primary" onClick={connect} disabled={connecting}>
+              {connecting ? "Connecting…" : `Connect ${adapter.label} wallet`}
+            </button>
+          ) : (
+            <a href={adapter.installUrl} target="_blank" rel="noreferrer" className="btn btn-primary">
+              Install {adapter.label} wallet
+            </a>
+          )}
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="card" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
