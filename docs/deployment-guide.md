@@ -4,13 +4,13 @@ This guide covers deploying D3R·AC's two deployable pieces: TRON smart
 contracts and the frontend. **Read the [Security](#security-checklist)
 section before deploying anything with real funds.**
 
-> **Status note:** as of this writing, no contract source is committed to
-> this repository yet (see [`contracts/tron/README.md`](../contracts/tron/README.md)).
-> The steps below describe the general TRON deployment process this
-> project will use once contracts land here — treat it as a process
-> reference, not confirmation that a deployable contract currently exists
-> in this repo. The frontend deployment section reflects what's actually
-> built.
+> **Status note:** contract source now exists (see
+> [`contracts/tron/README.md`](../contracts/tron/README.md)) but has not
+> been tested or deployed to any network yet — no test suite, no testnet
+> deployment, no audit. The steps below describe the process this project
+> will use once that changes; treat this as a process reference, not
+> confirmation of a currently-deployed contract. The frontend deployment
+> section reflects what's actually built.
 
 ## Smart contracts (TRON)
 

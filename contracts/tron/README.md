@@ -2,20 +2,36 @@
 
 ## Current status
 
-**No contract source is committed to this repository yet.** This file
-documents the interface the rest of the system (specifically the
-frontend's `ChainAdapter`) already expects, so contract implementation
-can slot in against a known contract without requiring frontend changes.
-It does not describe deployed, tested, or audited code, because none
-exists here at time of writing — the top-level README's status line will
-be updated once that changes.
+Contract source is now committed. Three contracts, dependency-free
+(no OpenZeppelin import — see each file's header comment for why),
+compiled clean against solc 0.8.20 with the optimizer on:
 
-If TRON contracts for this project exist in a different repository or
-were developed outside this one, they haven't been merged into
-`Data-Driven-Disaster-Resilience/D3R-AC` as of this commit — link them
-here once that's sorted out, rather than assuming this note is wrong.
+- **`D3RACToken.sol`** — the TRC-20 relief-fund token. Implements the
+  full standard surface, including the minimal slice the frontend
+  (`frontend/src/lib/tronAdapter.ts`) already calls against
+  (`balanceOf`, `decimals`, `symbol`, `transfer`), plus `approve` /
+  `transferFrom` / `allowance` and an owner-gated `mint`/`setMinter` so a
+  `DisbursementController` (or a treasury process) can be authorized to
+  mint without opening minting to anyone.
+- **`IdentityRegistry.sol`** — the wallet/identity layer. An admin
+  designates verifiers, who verify recipient wallets (communities / NGO
+  coordinators) with a human-readable label. This is the "who is allowed
+  to receive relief funds at all" gate, separate from the milestone logic
+  below.
+- **`DisbursementController.sol`** — the milestone-release logic this
+  file previously described as still-needed. A commitment is created for
+  a recipient the `IdentityRegistry` has verified, split into milestones.
+  Each milestone needs an `attester`-role attestation before its funds
+  can be released; release itself is permissionless once attested (the
+  attestation is the real gate, not who submits the transaction). Every
+  state change — commitment created, milestone attested, milestone
+  released, commitment cancelled — is an event.
 
-## Expected interface
+This is **not deployed or audited**. See Known limitations below and
+[`docs/deployment-guide.md`](../../docs/deployment-guide.md) before
+targeting even testnet with anything resembling real funds.
+
+## How the interface maps to what the frontend expects
 
 The frontend (`frontend/src/lib/tronAdapter.ts`) is written against a
 standard **TRC-20** token interface for reading balances and moving
@@ -28,45 +44,45 @@ function symbol() external view returns (string);
 function transfer(address _to, uint256 _value) external returns (bool);
 ```
 
-This is intentionally the minimal, standard TRC-20 surface — nothing
-D3R·AC-specific yet. It lets the frontend read a balance and execute a
-transfer against any TRC-20 token today, which is enough to build and
-test the UI, but it is **not** the milestone-based disbursement logic
-the project's README describes ("conditional, milestone-based,
-transparent fund release"). That logic — verifying a milestone condition
-on-chain before releasing funds, rather than an unconditional transfer —
-still needs to be designed and implemented as an actual contract.
+`D3RACToken.sol` implements exactly this (plus the rest of standard
+TRC-20), so the existing frontend adapter works against it unmodified —
+just point `VITE_TRON_NETWORK` / the disbursement console's token-address
+field at wherever it gets deployed.
 
-## What the real contract needs to add
+## Design decisions worth knowing before you read the code
 
-Based on the architecture described in the main README and
-[`docs/risk-model.md`](../../docs/risk-model.md), the milestone-release
-contract will need at minimum:
-
-- **Milestone definitions** per funding recipient/community — what
-  condition releases which tranche.
-- **A trusted way to attest a milestone was met** — an oracle, an
-  authorized reporter role, or a multisig attestation. This is a real
-  design decision with trust and centralization trade-offs; it shouldn't
-  be an afterthought.
-- **Access control** — who can create a funding commitment, who can
-  attest milestones, who (if anyone) can cancel or claw back funds, and
-  under what conditions.
-- **Auditable events** for every state change (commitment created,
-  milestone attested, funds released) — the whole point of the on-chain
-  approach is that this is inspectable without trusting an intermediary.
+- **Attestation trust model**: `DisbursementController` doesn't decide
+  *how* a milestone is verified — that's deliberately left to whoever
+  holds attester status (set via `setAttester`), per
+  [`docs/risk-model.md`](../../docs/risk-model.md)'s note that this is
+  "deployment-specific." Start with a small multisig as the attester,
+  not a single EOA.
+- **Funds aren't pulled automatically**: `createCommitment` only records
+  a schedule; it doesn't transfer tokens into the contract.
+  `releaseMilestone` checks the contract's own token balance and reverts
+  rather than partially paying, so the contract needs to actually hold
+  (or be funded with) enough of the token before milestones can release.
+- **Cancellation doesn't sweep funds**: `cancelCommitment` stops future
+  releases but leaves already-deposited, unreleased tokens in the
+  contract rather than silently redirecting them — that's left as a
+  separate, auditable admin action.
 
 ## Known limitations
 
-- No contract source exists in this repository yet — see Status above.
-- Whatever contract is eventually added here should assume **it will be
-  handling real disaster-relief funds** and be reviewed accordingly
-  before any mainnet use.
-- **No professional security audit has been performed**, because there
-  is nothing here yet to audit. Do not deploy anything derived from this
-  document to mainnet with real funds without both an actual
-  implementation review and a professional audit first — see
+- **No professional security audit has been performed.** Do not deploy
+  to mainnet with real funds without both an implementation review and a
+  professional audit first — see
   [`docs/deployment-guide.md`](../../docs/deployment-guide.md).
+- **Not yet deployed to any network** (Shasta, Nile, or mainnet). No
+  deployed address exists to point the frontend at yet.
+- **No test suite yet** — TronBox tests covering the milestone lifecycle
+  (including failure paths: zero-amount, unauthorized caller, insufficient
+  balance, double-release, double-attestation) still need to be written
+  before testnet deployment, per the checklist in
+  [`docs/deployment-guide.md`](../../docs/deployment-guide.md).
+- `admin` / `owner` / `verifiers` / `attesters` are single-key roles as
+  written. Multisig-ify before mainnet, per the deployment guide's
+  security checklist.
 
 ## Testnets
 
