@@ -8,7 +8,8 @@ contracts/tron/
 │   ├── D3RACToken.sol
 │   ├── IdentityRegistry.sol
 │   ├── DisbursementController.sol
-│   └── MultiSigAdmin.sol
+│   ├── MultiSigAdmin.sol
+│   └── D3RACHub.sol
 ├── test/                 # Hardhat/Mocha/Chai logic tests — see "Test suite" below
 ├── tronbox-config.js      # compile-only config (no network/private-key section —
 │                           # add one before using `tronbox migrate` to deploy)
@@ -23,7 +24,7 @@ same files with no extra config.
 
 ## Current status
 
-Four contracts, dependency-free (no OpenZeppelin import — see each
+Five contracts, dependency-free (no OpenZeppelin import — see each
 file's header comment for why), compiled clean against solc 0.8.20
 with the optimizer on:
 
@@ -48,16 +49,83 @@ with the optimizer on:
   state change — commitment created, milestone attested, milestone
   released, commitment cancelled — is an event.
 - **`MultiSigAdmin.sol`** — an N-of-M multisig meant to *hold* the
-  `admin`/`owner` role on the three contracts above instead of a single
+  `admin`/`owner` role on the contracts below instead of a single
   EOA (the "consider a multisig for any contract-owner or admin role"
   item from `docs/deployment-guide.md`'s security checklist). Deploy it
   first and pass its address as the constructor's admin/owner argument
   on the others. Generic (submits arbitrary `to`/`value`/`data`), so
   it isn't coupled to the other contracts' ABIs.
+- **`D3RACHub.sol`** — the central coordinator ("brain box"). One admin
+  surface, one emergency pause, one aggregate status call, sitting in
+  front of the three contracts above. See "The Hub" below for how it's
+  wired in and what it does and doesn't protect against.
 
 This is **not deployed or audited**. See Known limitations below and
 [`docs/deployment-guide.md`](../../docs/deployment-guide.md) before
 targeting even testnet with anything resembling real funds.
+
+## The Hub
+
+`D3RACHub.sol` is D3R·AC's control panel — it exists so an operator
+doesn't have to separately manage admin keys on three contracts, and so
+the frontend has one place to read overall system state instead of
+three.
+
+**What it gives you:**
+- **One admin surface** — `verifyRecipient`, `createCommitment`,
+  `attestMilestone`, `cancelCommitment`, and `mintTokens` all route
+  through the Hub instead of calling each contract directly.
+- **One emergency stop** — `pause()` blocks `verifyRecipient`,
+  `createCommitment`, `attestMilestone`, and `mintTokens` in a single
+  call. `cancelCommitment` and all admin/module-management functions
+  (`setToken`, `setIdentityRegistry`, `setDisbursementController`,
+  `transferAdmin`) stay callable while paused deliberately — those are
+  the defensive moves you need *during* an incident, not things a pause
+  meant to contain the incident should itself block.
+- **One status call** — `systemStatus()` returns all three module
+  addresses, the paused flag, token total supply, and total commitment
+  count in a single call instead of three separate contract reads.
+
+**What it does NOT give you:** the Hub is an additional caller, not a
+sealed choke point. Anyone who already holds a role directly on
+`IdentityRegistry` or `DisbursementController` can still call them
+directly, bypassing the Hub and its pause entirely. Treat the Hub as
+operational tooling — a convenience and a pause point — not a security
+boundary that replaces the underlying contracts' own access control.
+
+### Wiring the Hub
+
+Deploying `D3RACHub` does **not** automatically give it any authority —
+it's just another address until you explicitly grant it access on each
+underlying contract, and the *way* you grant it differs by function, in
+a way that matters:
+
+- `IdentityRegistry.verifyRecipient` and
+  `DisbursementController.attestMilestone` are gated by **role
+  mappings** (`verifiers`, `attesters`). Granting the Hub one of these
+  roles is **additive** — the original admin keeps working too:
+  ```solidity
+  identityRegistry.setVerifier(hubAddress, true);
+  disbursementController.setAttester(hubAddress, true);
+  ```
+- `DisbursementController.createCommitment` and `cancelCommitment` are
+  gated by a **single `admin` address**, not a role mapping. For these
+  to work through the Hub, the Hub must actually *become* that admin —
+  which is **exclusive**, not additive. The previous admin EOA loses
+  direct access the moment this runs:
+  ```solidity
+  disbursementController.transferAdmin(hubAddress);
+  ```
+- `D3RACToken.mint` is gated by the `minters` mapping — additive, same
+  pattern as verifier/attester:
+  ```solidity
+  token.setMinter(hubAddress, true);
+  ```
+
+Mixing these up — assuming `transferAdmin` is additive, or that
+granting a role covers `createCommitment` — is exactly the kind of
+mistake `test/D3RACHub.test.js` was written to catch; see its
+`beforeEach` for the full wiring sequence exercised in the test suite.
 
 ## Compiling with TronBox
 
@@ -75,14 +143,20 @@ touches `contracts/tron/**` (see `contracts-tron` job in
 
 ## Test suite
 
-`test/` has a logic-level Hardhat/Mocha/Chai test suite (50 tests)
-covering all four contracts, including the failure paths
+`test/` has a logic-level Hardhat/Mocha/Chai test suite (66 tests)
+covering all five contracts, including the failure paths
 `docs/deployment-guide.md`'s checklist calls out by name — zero-amount
 milestones, unauthorized callers, double-attestation, double-release,
 insufficient contract balance, and unverified recipients — plus a
 `MultiSigAdmin` integration test proving it can genuinely hold
 `IdentityRegistry`'s admin role and that a call routed through it
-reverts (and stays re-executable) if the underlying call reverts.
+reverts (and stays re-executable) if the underlying call reverts, and a
+`D3RACHub` suite proving the Hub's pause actually blocks writes (and
+deliberately doesn't block `cancelCommitment` or admin actions), and
+that its orchestration calls genuinely fail without the exact wiring
+described above — including the additive-vs-exclusive distinction,
+caught by an earlier version of this suite that assumed `transferAdmin`
+was additive and had to be fixed.
 
 Run it with:
 
@@ -95,7 +169,7 @@ npx hardhat test
 **Why Hardhat and not TronBox here:** these contracts use no
 TRON-specific precompiles or opcodes, so they're exactly as testable
 against a standard EVM as against the TVM — Hardhat's in-process network
-is faster to iterate against for logic tests. All 50 tests were run and
+is faster to iterate against for logic tests. All 66 tests were run and
 passed against solc 0.8.20 during development. This validates contract
 *logic*; it does not replace an actual TronBox/TronIDE deployment and
 exercise on Shasta or Nile, which is still required before mainnet (see
@@ -155,7 +229,7 @@ field at wherever it gets deployed.
 - **Not yet deployed to any network** (Shasta, Nile, or mainnet). No
   deployed address exists to point the frontend at yet.
 - **Logic tests pass; TVM-specific verification hasn't happened yet** —
-  the 50-test Hardhat suite validates behavior against a standard EVM
+  the 66-test Hardhat suite validates behavior against a standard EVM
   (see "Test suite" above), not the actual TVM. Run a TronBox pass
   against TronBox Quickstart (or Shasta/Nile directly) before treating
   this as a TVM-specific gate.
@@ -167,6 +241,11 @@ field at wherever it gets deployed.
   minimal (no owner-replacement-by-vote, no transaction expiry) —
   consider a maintained implementation (e.g. Gnosis Safe) for anything
   beyond early testnet use.
+- **The Hub is a convenience, not a security boundary** — see "What it
+  does NOT give you" above. Its pause only blocks calls made *through*
+  it; a role held directly on `IdentityRegistry` or
+  `DisbursementController` still works regardless of the Hub's paused
+  state.
 
 ## Testnets
 
