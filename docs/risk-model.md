@@ -78,13 +78,16 @@ As of this writing, `R(c, t)` is implemented in two places:
    input.
 
 There is no data-pipeline implementation in this repository yet (see the
-top-level README's Status section), and nothing currently calls
-`RiskRegistry.updateRisk` with real data — both implementations above are
-ready to receive real hazard/exposure/vulnerability input, not connected
-to it yet. Anyone building the real data layer should treat the mock
-dataset's shape (one `H`/`E`/`V` triple per community, refreshed per `t`)
-as the contract both the frontend and `RiskRegistry.sol` already expect,
-and wire real sources in behind it.
+top-level README's Status section) — a requirements spec exists at
+[`docs/data-pipeline-srs.md`](data-pipeline-srs.md) (proprietary, see
+its own license notice), but nothing has been built against it, and
+nothing currently calls `RiskRegistry.updateRisk` with real data —
+both implementations above are ready to receive real hazard/exposure/
+vulnerability input, not connected to it yet. Anyone building the real
+data layer should treat the mock dataset's shape (one `H`/`E`/`V`
+triple per community, refreshed per `t`) as the contract both the
+frontend and `RiskRegistry.sol` already expect, and wire real sources
+in behind it.
 
 ## Open questions for a production deployment
 

@@ -75,14 +75,18 @@ npm run dev
 
 🚧 **Active development.** TRON smart contract suite implemented — token,
 identity registry, milestone-based disbursement controller, a multisig
-admin role, a central coordinator ("Hub"), an on-chain risk registry, and
+admin role, a central coordinator ("Hub") with full role/ownership
+control over the other five contracts, an on-chain risk registry, and
 a funding-request board (seven contracts total; see
 [`contracts/tron/README.md`](contracts/tron/README.md)) — with a
-**logic-tested suite (83 passing tests)**, but **not yet deployed to any
+**logic-tested suite (115 passing tests)**, but **not yet deployed to any
 network and not yet professionally audited.** Frontend community access
 layer implemented (TRON live, Casper adapter in place pending Casper
 contract deployment). Casper contracts and the data pipeline are still
-not started.
+not started — see [`docs/data-pipeline-srs.md`](docs/data-pipeline-srs.md)
+for the data pipeline's requirements spec (proprietary, see that
+document's own license notice — distinct from the rest of this
+MIT-licensed repository).
 
 ## Contributing
 

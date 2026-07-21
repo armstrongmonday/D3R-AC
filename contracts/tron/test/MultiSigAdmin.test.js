@@ -110,4 +110,39 @@ describe("MultiSigAdmin", function () {
 
     expect(await registry.verifiers(target.address)).to.equal(true);
   });
+
+  it("integration: can genuinely hold D3RACHub's admin role, so a single confirmed EOA cannot act alone -- the intended top-of-chain architecture (MultiSigAdmin administers the Hub, the Hub administers everything else)", async function () {
+    const token = await deploy("D3RACToken", ownerA, 1000, ownerA.address);
+    const registry = await deploy("IdentityRegistry", ownerA, ownerA.address);
+    const controller = await deploy("DisbursementController", ownerA, await registry.getAddress(), ownerA.address);
+
+    const hub = await deploy(
+      "D3RACHub", ownerA,
+      await multisig.getAddress(), // admin = the multisig, not an EOA
+      await token.getAddress(),
+      await registry.getAddress(),
+      await controller.getAddress(),
+      ethers.ZeroAddress,
+      ethers.ZeroAddress
+    );
+    expect(await hub.admin()).to.equal(await multisig.getAddress());
+
+    // A single multisig owner cannot act on the Hub directly -- the Hub's
+    // admin is the multisig contract, not any one of its owners.
+    await expect(hub.connect(ownerA).pause()).to.be.revertedWith("D3RACHub: caller is not admin");
+
+    const hubIface = new ethers.Interface(["function pause()"]);
+    const pauseData = hubIface.encodeFunctionData("pause", []);
+    await multisig.connect(ownerA).submitTransaction(await hub.getAddress(), 0, pauseData);
+
+    // One confirmation (threshold is 2) is not enough.
+    await expect(multisig.connect(ownerA).executeTransaction(0)).to.be.revertedWith(
+      "MultiSigAdmin: insufficient confirmations"
+    );
+
+    await multisig.connect(ownerB).confirmTransaction(0);
+    await multisig.connect(ownerA).executeTransaction(0);
+
+    expect(await hub.paused()).to.equal(true); // real Hub state changed, via 2-of-3 multisig confirmation
+  });
 });
