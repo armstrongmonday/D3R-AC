@@ -10,12 +10,11 @@ and design decisions it describes — may not be copied, distributed,
 implemented, or otherwise used, in whole or in part, without prior
 written permission from TAAD (The Abuja Algorithmic Defenders).
 
-This notice applies **only to this document** and is distinct from,
-and takes precedence over, the MIT License that otherwise governs the
-D3R·AC repository's source code (see the top-level
-[`LICENSE`](../LICENSE) and [`CONTRIBUTING.md`](../CONTRIBUTING.md)).
-The rest of this repository remains MIT-licensed and open to
-contribution unless TAAD states otherwise in writing.
+This notice applies **in addition to**, and is even more restrictive
+than, the [TAAD D3R·AC Proprietary License](../LICENSE) that already
+governs the entire repository (see also
+[`CONTRIBUTING.md`](../CONTRIBUTING.md)). Where the two overlap, the
+more restrictive term controls.
 
 To request permission to use this document or implement the
 requirements it describes, contact TAAD (The Abuja Algorithmic
