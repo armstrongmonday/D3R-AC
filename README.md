@@ -8,7 +8,7 @@ Built by **TAAD (The Abuja Algorithmic Defenders)**
 
 ## What is D3R·AC?
 
-D3R·AC is an open-source, blockchain-based disaster resilience framework. It treats disaster relief as a data and infrastructure problem, not just a fundraising problem — using on-chain smart contracts to make fund disbursement transparent, auditable, and fast, instead of routed through opaque layers of intermediaries.
+D3R·AC is a proprietary, blockchain-based disaster resilience framework, built and owned by TAAD (The Abuja Algorithmic Defenders). It treats disaster relief as a data and infrastructure problem, not just a fundraising problem — using on-chain smart contracts to make fund disbursement transparent, auditable, and fast, instead of routed through opaque layers of intermediaries.
 
 The system is built on three layers:
 
@@ -84,13 +84,14 @@ network and not yet professionally audited.** Frontend community access
 layer implemented (TRON live, Casper adapter in place pending Casper
 contract deployment). Casper contracts and the data pipeline are still
 not started — see [`docs/data-pipeline-srs.md`](docs/data-pipeline-srs.md)
-for the data pipeline's requirements spec (proprietary, see that
-document's own license notice — distinct from the rest of this
-MIT-licensed repository).
+for the data pipeline's requirements spec, which carries its own
+additional, even more restrictive notice on top of the
+proprietary [`LICENSE`](LICENSE) that already governs this entire
+repository.
 
 ## Contributing
 
-D3R·AC is open-source and welcomes contributions from developers, humanitarian-tech practitioners, and NGO partners. See [`CONTRIBUTING.md`](CONTRIBUTING.md) for guidelines.
+D3R·AC is proprietary software owned by TAAD (The Abuja Algorithmic Defenders). Contributions from developers, humanitarian-tech practitioners, and NGO partners are welcome **by prior arrangement with TAAD** — see [`CONTRIBUTING.md`](CONTRIBUTING.md) for the process, and [`LICENSE`](LICENSE) for the terms any contribution is made under.
 
 ## Security
 
@@ -98,7 +99,11 @@ This contract has **not** been professionally audited. Do not deploy to mainnet 
 
 ## License
 
-MIT — see [`LICENSE`](LICENSE)
+Proprietary — **TAAD D3R·AC Proprietary License**, all rights reserved.
+Not to be used, copied, modified, distributed, or deployed by any
+party without prior express written permission from TAAD (The Abuja
+Algorithmic Defenders) / Founder Armstrong Usang Monday. See
+[`LICENSE`](LICENSE) for full terms.
 
 ## Contact
 
