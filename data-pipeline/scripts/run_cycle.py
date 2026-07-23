@@ -31,6 +31,7 @@ from d3rac_pipeline.adapters import (
 )
 from d3rac_pipeline.chain_client import ChainClient
 from d3rac_pipeline.config import load_communities, load_settings
+from d3rac_pipeline.frontend_feed import build_frontend_feed, write_frontend_feed
 from d3rac_pipeline.logging_setup import configure_logging
 from d3rac_pipeline.pipeline import Pipeline
 
@@ -73,6 +74,22 @@ def main() -> int:
     )
 
     summary = pipeline.run_cycle()
+
+    # FR-9: keep the frontend's read-path up to date every cycle, dry-run
+    # or --submit alike, so `npm run dev` always reflects the pipeline's
+    # latest computed values, not just live-chain deployments.
+    feed = build_frontend_feed(
+        communities=communities,
+        state_store=pipeline.state,
+        stale_after_hours=settings.stale.stale_after_hours,
+        last_hazard_sources=pipeline.last_hazard_sources,
+    )
+    repo_root = Path(__file__).resolve().parents[2]
+    write_frontend_feed(
+        feed,
+        str(repo_root / "data-pipeline" / "output" / "communities.json"),
+        str(repo_root / "frontend" / "public" / "data" / "communities.json"),
+    )
 
     print(
         f"\nCycle {summary.cycle_id}: {summary.succeeded}/{summary.total_communities} succeeded, "

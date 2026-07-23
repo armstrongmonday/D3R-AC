@@ -45,6 +45,9 @@ class Pipeline:
         self.state = state_store or StateStore(settings.state_db_path)
         self.audit = audit_log or AuditLog(settings.audit_log_path)
         self._registered_cache: set[str] = set()
+        # FR-9 support: which hazard source drove each community's last
+        # computed H(t), for the frontend feed export (see frontend_feed.py).
+        self.last_hazard_sources: dict[str, str] = {}
 
     def run_cycle(self) -> CycleSummary:
         cycle_id = uuid.uuid4().hex[:12]
@@ -111,6 +114,8 @@ class Pipeline:
             self.state.mark_cycle_status(cycle_id, community.id, "skipped_stale",
                                           "no hazard source returned data within staleness window")
             return "skipped_stale"
+
+        self.last_hazard_sources[community.id] = hazard_reading.source
 
         is_stale = self._is_stale(hazard_reading.observed_at)
         if is_stale and self.settings.stale.stale_policy == "stop_submitting":

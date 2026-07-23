@@ -1,5 +1,6 @@
-import { COMMUNITIES, riskScore, riskTier, RISK_THRESHOLD } from "../lib/riskModel";
+import { riskScore, riskTier, RISK_THRESHOLD } from "../lib/riskModel";
 import type { RiskTier } from "../lib/riskModel";
+import { useCommunities } from "../lib/useCommunities";
 
 const TIER_STYLE: Record<RiskTier, { color: string; label: string }> = {
   watch: { color: "var(--teal)", label: "Watch" },
@@ -8,16 +9,24 @@ const TIER_STYLE: Record<RiskTier, { color: string; label: string }> = {
 };
 
 export default function Dashboard() {
-  const rows = COMMUNITIES.map((c) => ({ ...c, score: riskScore(c), tier: riskTier(riskScore(c)) }))
+  const { communities, source, generatedAt, staleCommunityIds, loading } = useCommunities();
+  const rows = communities.map((c) => ({ ...c, score: riskScore(c), tier: riskTier(riskScore(c)) }))
     .sort((a, b) => b.score - a.score);
 
   return (
     <section className="container" style={{ padding: "48px 24px 80px" }}>
       <p className="eyebrow" style={{ marginBottom: 12 }}>Risk dashboard</p>
       <h1 style={{ fontSize: 34, marginBottom: 8 }}>Communities by resilience-funding priority</h1>
-      <p style={{ color: "var(--text-muted)", maxWidth: 620, marginBottom: 32 }}>
+      <p style={{ color: "var(--text-muted)", maxWidth: 620, marginBottom: 16 }}>
         Sorted by R(c,t) = H(t)·E(c)·V(c). Threshold θ = {RISK_THRESHOLD} — scores at or above it
         are eligible for milestone-based fund pre-positioning.
+      </p>
+      <p style={{ fontSize: 12, color: "var(--text-faint)", marginBottom: 32, fontFamily: "monospace" }}>
+        {loading
+          ? "Loading…"
+          : source === "live"
+            ? `Live data-pipeline feed · generated ${generatedAt ? new Date(generatedAt).toLocaleString() : "unknown"}`
+            : "Illustrative demo data — live data-pipeline feed not reachable (see data-pipeline/README.md)"}
       </p>
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
@@ -48,6 +57,11 @@ export default function Dashboard() {
                       <span className="dot" style={{ background: tier.color }} />
                       {tier.label}
                     </span>
+                    {staleCommunityIds.includes(r.id) && (
+                      <span style={{ marginLeft: 8, fontSize: 11, color: "var(--text-faint)" }} title="Hazard reading is older than the configured staleness window">
+                        stale
+                      </span>
+                    )}
                   </td>
                   <td style={{ padding: "16px 20px", fontSize: 13, color: "var(--text-muted)" }}>
                     {r.fundedMilestones} / {r.totalMilestones} funded
