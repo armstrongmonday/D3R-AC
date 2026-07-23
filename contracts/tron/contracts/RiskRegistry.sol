@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./base/D3RACProperties.sol";
+
 /// @title RiskRegistry
 /// @notice Puts D3R·AC's risk model, R(c,t) = H(t)·E(c)·V(c), on-chain per
 ///         community — the same formula and threshold θ documented in
@@ -17,12 +19,13 @@ pragma solidity ^0.8.20;
 ///      the funding threshold — so anyone watching the chain (a donor bot,
 ///      an NGO dashboard, FundingRequestRegistry below) can react without
 ///      trusting a middleman's summary of the data.
-contract RiskRegistry {
+contract RiskRegistry is D3RACProperties {
+    bytes32 public constant DATA_FEEDER_ROLE = keccak256("RiskRegistry.DATA_FEEDER_ROLE");
+
     uint256 public constant SCALE = 1e18; // fixed-point scale for H, E, V, R (all in [0, 1] represented as [0, 1e18])
     uint256 public riskThreshold; // theta, same scale
 
     address public owner;
-    mapping(address => bool) public dataFeeders;
 
     struct CommunityRisk {
         string name;
@@ -58,7 +61,7 @@ contract RiskRegistry {
     }
 
     modifier onlyDataFeeder() {
-        require(dataFeeders[msg.sender], "RiskRegistry: caller is not a data feeder");
+        _checkRole(DATA_FEEDER_ROLE, msg.sender, "RiskRegistry: caller is not a data feeder");
         _;
     }
 
@@ -67,9 +70,15 @@ contract RiskRegistry {
         owner = msg.sender;
         riskThreshold = initialThreshold;
         if (initialDataFeeder != address(0)) {
-            dataFeeders[initialDataFeeder] = true;
+            _grantRole(DATA_FEEDER_ROLE, initialDataFeeder);
             emit DataFeederAdded(initialDataFeeder);
         }
+    }
+
+    /// @notice Compatibility view over the shared role registry — see
+    ///         D3RACProperties.sol for why the mapping moved here.
+    function dataFeeders(address account) external view returns (bool) {
+        return hasRole(DATA_FEEDER_ROLE, account);
     }
 
     // ---------------------------------------------------------------
@@ -83,12 +92,12 @@ contract RiskRegistry {
 
     function addDataFeeder(address feeder) external onlyOwner {
         require(feeder != address(0), "RiskRegistry: zero address");
-        dataFeeders[feeder] = true;
+        _grantRole(DATA_FEEDER_ROLE, feeder);
         emit DataFeederAdded(feeder);
     }
 
     function removeDataFeeder(address feeder) external onlyOwner {
-        dataFeeders[feeder] = false;
+        _revokeRole(DATA_FEEDER_ROLE, feeder);
         emit DataFeederRemoved(feeder);
     }
 

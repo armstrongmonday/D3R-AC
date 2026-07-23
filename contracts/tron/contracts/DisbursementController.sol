@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./IdentityRegistry.sol";
+import "./base/D3RACProperties.sol";
 
 /// @dev Minimal TRC-20 interface — matches the surface D3RACToken.sol
 ///      implements and the one frontend/src/lib/tronAdapter.ts already
@@ -28,7 +29,9 @@ interface ITRC20 {
 ///      Uses checks-effects-interactions and a reentrancy guard around the
 ///      external token transfer in releaseMilestone, since that's the one
 ///      point where control leaves this contract.
-contract DisbursementController {
+contract DisbursementController is D3RACProperties {
+    bytes32 public constant ATTESTER_ROLE = keccak256("DisbursementController.ATTESTER_ROLE");
+
     struct Milestone {
         string description;
         uint256 amount;
@@ -53,10 +56,8 @@ contract DisbursementController {
 
     IdentityRegistry public immutable registry;
     address public admin;
-    mapping(address => bool) public attesters;
 
     Commitment[] private _commitments;
-    bool private _locked; // reentrancy guard
 
     event CommitmentCreated(
         uint256 indexed commitmentId,
@@ -78,15 +79,17 @@ contract DisbursementController {
     }
 
     modifier onlyAttester() {
-        require(attesters[msg.sender], "DisbursementController: caller is not an attester");
+        _checkRole(ATTESTER_ROLE, msg.sender, "DisbursementController: caller is not an attester");
         _;
     }
 
-    modifier nonReentrant() {
-        require(!_locked, "DisbursementController: reentrant call");
-        _locked = true;
-        _;
-        _locked = false;
+    // nonReentrant is now inherited from D3RACProperties — see that file
+    // for the (unchanged) status-flag implementation.
+
+    /// @notice Compatibility view over the shared role registry — see
+    ///         D3RACProperties.sol for why the mapping moved here.
+    function attesters(address account) external view returns (bool) {
+        return hasRole(ATTESTER_ROLE, account);
     }
 
     /// @param registry_ Deployed IdentityRegistry address — recipients
@@ -98,7 +101,7 @@ contract DisbursementController {
         require(admin_ != address(0), "DisbursementController: admin is zero address");
         registry = IdentityRegistry(registry_);
         admin = admin_;
-        attesters[admin_] = true;
+        _grantRole(ATTESTER_ROLE, admin_);
         emit AdminTransferred(address(0), admin_);
         emit AttesterUpdated(admin_, true);
     }
@@ -107,7 +110,7 @@ contract DisbursementController {
 
     function setAttester(address account, bool isAttester) external onlyAdmin {
         require(account != address(0), "DisbursementController: zero address");
-        attesters[account] = isAttester;
+        _setRole(ATTESTER_ROLE, account, isAttester);
         emit AttesterUpdated(account, isAttester);
     }
 

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./base/D3RACProperties.sol";
+
 /// @title MultiSigAdmin
 /// @notice Minimal N-of-M multisig, meant to hold the `admin` role on
 ///         IdentityRegistry and DisbursementController (and/or the
@@ -21,7 +23,9 @@ pragma solidity ^0.8.20;
 ///      MultiSigAdmin and re-pointing the other contracts' admin role to
 ///      it (each of those contracts supports transferAdmin/
 ///      transferOwnership for exactly this).
-contract MultiSigAdmin {
+contract MultiSigAdmin is D3RACProperties {
+    bytes32 public constant OWNER_ROLE = keccak256("MultiSigAdmin.OWNER_ROLE");
+
     struct Transaction {
         address to;
         uint256 value;
@@ -31,7 +35,6 @@ contract MultiSigAdmin {
     }
 
     address[] public owners;
-    mapping(address => bool) public isOwner;
     uint256 public threshold;
 
     Transaction[] private _transactions;
@@ -45,8 +48,14 @@ contract MultiSigAdmin {
     event TransactionExecutionFailed(uint256 indexed txId);
 
     modifier onlyOwner() {
-        require(isOwner[msg.sender], "MultiSigAdmin: caller is not an owner");
+        _checkRole(OWNER_ROLE, msg.sender, "MultiSigAdmin: caller is not an owner");
         _;
+    }
+
+    /// @notice Compatibility view over the shared role registry — see
+    ///         D3RACProperties.sol for why the mapping moved here.
+    function isOwner(address account) external view returns (bool) {
+        return hasRole(OWNER_ROLE, account);
     }
 
     modifier txExists(uint256 txId) {
@@ -69,8 +78,8 @@ contract MultiSigAdmin {
         for (uint256 i = 0; i < owners_.length; i++) {
             address o = owners_[i];
             require(o != address(0), "MultiSigAdmin: zero address owner");
-            require(!isOwner[o], "MultiSigAdmin: duplicate owner");
-            isOwner[o] = true;
+            require(!hasRole(OWNER_ROLE, o), "MultiSigAdmin: duplicate owner");
+            _grantRole(OWNER_ROLE, o);
             owners.push(o);
             emit OwnerAdded(o);
         }
@@ -103,7 +112,7 @@ contract MultiSigAdmin {
     /// @notice Execute a transaction once it has >= threshold confirmations.
     ///         Reverts if the underlying call reverts, so a failed
     ///         execution never silently marks the transaction as done.
-    function executeTransaction(uint256 txId) external onlyOwner txExists(txId) notExecuted(txId) {
+    function executeTransaction(uint256 txId) external onlyOwner txExists(txId) notExecuted(txId) nonReentrant {
         Transaction storage t = _transactions[txId];
         require(t.confirmationCount >= threshold, "MultiSigAdmin: insufficient confirmations");
 
