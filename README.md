@@ -50,7 +50,7 @@ d3rac/
 - **Smart contracts:** Solidity (TRON/TVM), [Casper contract language — TBD]
 - **Chains:** TRON, Casper Network
 - **Frontend:** React + Vite + TypeScript
-- **Data pipeline:** [TBD]
+- **Data pipeline:** Python, satellite/sensor ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized — see [`data-pipeline/README.md`](data-pipeline/README.md)
 
 ## Getting Started
 
@@ -82,12 +82,15 @@ a funding-request board (seven contracts total; see
 **logic-tested suite (115 passing tests)**, but **not yet deployed to any
 network and not yet professionally audited.** Frontend community access
 layer implemented (TRON live, Casper adapter in place pending Casper
-contract deployment). Casper contracts and the data pipeline are still
-not started — see [`docs/data-pipeline-srs.md`](docs/data-pipeline-srs.md)
-for the data pipeline's requirements spec, which carries its own
-additional, even more restrictive notice on top of the
-proprietary [`LICENSE`](LICENSE) that already governs this entire
-repository.
+contract deployment). Data pipeline implemented per
+[`docs/data-pipeline-srs.md`](docs/data-pipeline-srs.md) — satellite/sensor
+hazard ingestion (NASA FIRMS, USGS, NASA EONET, GDACS), Africa-prioritized,
+with a 24-test suite (see [`data-pipeline/README.md`](data-pipeline/README.md))
+— but **not yet run against a deployed Hub/RiskRegistry**, since neither
+is deployed to any network yet. Casper contracts are still not started.
+The data pipeline SRS carries its own additional, even more restrictive
+notice on top of the proprietary [`LICENSE`](LICENSE) that already
+governs this entire repository.
 
 ## Contributing
 
