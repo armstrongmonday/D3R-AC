@@ -2,6 +2,7 @@
 pragma solidity ^0.8.20;
 
 import "./IdentityRegistry.sol";
+import "./base/D3RACProperties.sol";
 
 /// @dev Minimal interface onto DisbursementController — kept local rather
 ///      than importing the contract, matching the pattern DisbursementController.sol
@@ -124,7 +125,13 @@ interface IFundingRequestRegistryHub {
 ///      themselves; their role-management proxies simply revert with a
 ///      clear "not set" message until an address is configured.
 ///      Dependency-free by design — see D3RACToken.sol for rationale.
-contract D3RACHub {
+///      Inherits D3RACProperties like every other contract in this suite
+///      (see that file) so the Hub is on the same shared role-registry /
+///      reentrancy-guard foundation, even though its own admin/paused
+///      fields stay as they are — a single admin address and a single
+///      pause flag are already the simplest correct representation and
+///      don't need the multi-holder role registry the other contracts use.
+contract D3RACHub is D3RACProperties {
     address public admin;
     bool public paused;
 

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./base/D3RACProperties.sol";
+
 /// @title D3RACToken
 /// @notice TRC-20 relief-fund token for D3R·AC. Implements the standard
 ///         surface the frontend already calls against
@@ -12,14 +14,15 @@ pragma solidity ^0.8.20;
 /// @dev Deliberately dependency-free (no OpenZeppelin import) so it drops
 ///      into TronBox/TronIDE without a package resolution step. Logic
 ///      mirrors the audited OpenZeppelin ERC-20 pattern closely.
-contract D3RACToken {
+contract D3RACToken is D3RACProperties {
+    bytes32 public constant MINTER_ROLE = keccak256("D3RACToken.MINTER_ROLE");
+
     string public name = "D3R-AC Relief Token";
     string public symbol = "D3RAC";
     uint8 public decimals = 18;
     uint256 public totalSupply;
 
     address public owner;
-    mapping(address => bool) public minters;
 
     mapping(address => uint256) private _balances;
     mapping(address => mapping(address => uint256)) private _allowances;
@@ -35,8 +38,14 @@ contract D3RACToken {
     }
 
     modifier onlyMinter() {
-        require(minters[msg.sender], "D3RACToken: caller is not a minter");
+        _checkRole(MINTER_ROLE, msg.sender, "D3RACToken: caller is not a minter");
         _;
+    }
+
+    /// @notice Compatibility view over the shared role registry — see
+    ///         D3RACProperties.sol for why the mapping moved here.
+    function minters(address account) external view returns (bool) {
+        return hasRole(MINTER_ROLE, account);
     }
 
     /// @param initialSupply Minted to `owner_` at deployment, in whole
@@ -48,7 +57,7 @@ contract D3RACToken {
     constructor(uint256 initialSupply, address owner_) {
         require(owner_ != address(0), "D3RACToken: owner is zero address");
         owner = owner_;
-        minters[owner_] = true;
+        _grantRole(MINTER_ROLE, owner_);
         emit OwnershipTransferred(address(0), owner_);
         emit MinterUpdated(owner_, true);
 
@@ -107,7 +116,7 @@ contract D3RACToken {
     }
 
     function setMinter(address account, bool canMint) external onlyOwner {
-        minters[account] = canMint;
+        _setRole(MINTER_ROLE, account, canMint);
         emit MinterUpdated(account, canMint);
     }
 

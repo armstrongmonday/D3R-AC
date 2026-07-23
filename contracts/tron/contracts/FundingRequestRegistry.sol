@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./base/D3RACProperties.sol";
+
 /// @title FundingRequestRegistry
 /// @notice The on-chain half of "seek funding sources and request
 ///         assistance for communities": a public, permissionless-to-read
@@ -15,7 +17,9 @@ pragma solidity ^0.8.20;
 /// @dev Designed to reference RiskRegistry and DisbursementController by ID/address
 ///      rather than duplicating their data, so this stays a thin
 ///      coordination layer, not a third source of truth.
-contract FundingRequestRegistry {
+contract FundingRequestRegistry is D3RACProperties {
+    bytes32 public constant PROPOSER_ROLE = keccak256("FundingRequestRegistry.PROPOSER_ROLE");
+
     enum Status {
         Open,
         PartiallyFunded,
@@ -37,7 +41,6 @@ contract FundingRequestRegistry {
     }
 
     address public owner;
-    mapping(address => bool) public proposers; // who may open requests (kept restricted so the board isn't spammable)
 
     FundingRequest[] private _requests;
 
@@ -63,16 +66,22 @@ contract FundingRequestRegistry {
     }
 
     modifier onlyProposer() {
-        require(proposers[msg.sender], "FundingRequestRegistry: caller is not an authorized proposer");
+        _checkRole(PROPOSER_ROLE, msg.sender, "FundingRequestRegistry: caller is not an authorized proposer");
         _;
     }
 
     constructor(address initialProposer) {
         owner = msg.sender;
         if (initialProposer != address(0)) {
-            proposers[initialProposer] = true;
+            _grantRole(PROPOSER_ROLE, initialProposer);
             emit ProposerAdded(initialProposer);
         }
+    }
+
+    /// @notice Compatibility view over the shared role registry — see
+    ///         D3RACProperties.sol for why the mapping moved here.
+    function proposers(address account) external view returns (bool) {
+        return hasRole(PROPOSER_ROLE, account);
     }
 
     // ---------------------------------------------------------------
@@ -86,12 +95,12 @@ contract FundingRequestRegistry {
 
     function addProposer(address proposer) external onlyOwner {
         require(proposer != address(0), "FundingRequestRegistry: zero address");
-        proposers[proposer] = true;
+        _grantRole(PROPOSER_ROLE, proposer);
         emit ProposerAdded(proposer);
     }
 
     function removeProposer(address proposer) external onlyOwner {
-        proposers[proposer] = false;
+        _revokeRole(PROPOSER_ROLE, proposer);
         emit ProposerRemoved(proposer);
     }
 

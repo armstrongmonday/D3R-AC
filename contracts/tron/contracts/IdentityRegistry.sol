@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "./base/D3RACProperties.sol";
+
 /// @title IdentityRegistry
 /// @notice On-chain allow-list of verified fund recipients (communities /
 ///         NGO coordinators) and the verifiers trusted to vouch for them.
@@ -11,7 +13,12 @@ pragma solidity ^0.8.20;
 ///         all" layer, separate from "has this specific milestone been met"
 ///         (that's DisbursementController's job).
 /// @dev Dependency-free by design — see D3RACToken.sol for rationale.
-contract IdentityRegistry {
+///      Verifier role now lives in the shared D3RACProperties role
+///      registry; `verifiers(address)` below is a thin compatibility view
+///      over it so existing integrations/tests are unaffected.
+contract IdentityRegistry is D3RACProperties {
+    bytes32 public constant VERIFIER_ROLE = keccak256("IdentityRegistry.VERIFIER_ROLE");
+
     struct Recipient {
         bool verified;
         string community;      // human-readable community/org name
@@ -21,7 +28,6 @@ contract IdentityRegistry {
     }
 
     address public admin;
-    mapping(address => bool) public verifiers;
     mapping(address => Recipient) public recipients;
 
     event AdminTransferred(address indexed previousAdmin, address indexed newAdmin);
@@ -35,7 +41,7 @@ contract IdentityRegistry {
     }
 
     modifier onlyVerifier() {
-        require(verifiers[msg.sender], "IdentityRegistry: caller is not a verifier");
+        _checkRole(VERIFIER_ROLE, msg.sender, "IdentityRegistry: caller is not a verifier");
         _;
     }
 
@@ -44,16 +50,24 @@ contract IdentityRegistry {
     constructor(address admin_) {
         require(admin_ != address(0), "IdentityRegistry: admin is zero address");
         admin = admin_;
-        verifiers[admin_] = true;
+        _grantRole(VERIFIER_ROLE, admin_);
         emit AdminTransferred(address(0), admin_);
         emit VerifierUpdated(admin_, true);
+    }
+
+    /// @notice Compatibility view: `verifiers[account]` used to be a plain
+    ///         public mapping; it now reads through to the shared role
+    ///         registry so callers (including existing tests/frontend)
+    ///         don't need to change.
+    function verifiers(address account) external view returns (bool) {
+        return hasRole(VERIFIER_ROLE, account);
     }
 
     // ── Verifier management (admin only) ────────────────────────────────
 
     function setVerifier(address account, bool isVerifier) external onlyAdmin {
         require(account != address(0), "IdentityRegistry: zero address");
-        verifiers[account] = isVerifier;
+        _setRole(VERIFIER_ROLE, account, isVerifier);
         emit VerifierUpdated(account, isVerifier);
     }
 
