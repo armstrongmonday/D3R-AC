@@ -2,7 +2,19 @@
 // .env file (see .env.example). That file is gitignored -- never commit
 // a real private key or seed phrase, per docs/deployment-guide.md's
 // security checklist.
-require('dotenv').config();
+//
+// Wrapped in try/catch deliberately: `tronbox compile` needs none of
+// this (no network/key required to just compile), so it shouldn't fail
+// in a context that hasn't run `npm install` locally -- e.g. CI's
+// contracts-tron job, which only installs the tronbox CLI globally.
+// `tronbox migrate` does need real env vars, and `npm install` (see
+// docs/deployment-guide.md) gets you dotenv for that.
+try {
+  require('dotenv').config();
+} catch (_) {
+  // No local node_modules/dotenv -- fine for compile-only use, since
+  // process.env.TRON_PRIVATE_KEY_* etc. simply stay undefined below.
+}
 
 module.exports = {
   networks: {
